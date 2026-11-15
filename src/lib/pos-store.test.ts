@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeTotals, seedProducts } from "./pos-store";
+import { computeTotals, seedProducts, type CartLine } from "./pos-store";
 
-const cart = [{ product: { ...seedProducts[0], price: 100 }, qty: 2 }];
+const cart: CartLine[] = [{ product: { ...seedProducts[0]!, price: 100 }, qty: 2 }];
 describe("totals", () => {
   it("adds 12% VAT", () => expect(computeTotals(cart, false, true).total).toBe(224));
   it("applies 20% discount before VAT", () => expect(computeTotals(cart, true, true).total).toBe(179.2));

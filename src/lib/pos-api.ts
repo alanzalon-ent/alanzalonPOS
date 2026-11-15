@@ -2,7 +2,7 @@
 // to load from a local backend; otherwise the app runs on bundled demo data.
 import type { Order, Product } from "./pos-store";
 
-export const API_URL = (import.meta.env.VITE_POS_API_URL as string | undefined) ?? "";
+export const API_URL = (import.meta.env["VITE_POS_API_URL"] as string | undefined) ?? "";
 
 export async function fetchProducts(): Promise<Product[] | null> {
   if (!API_URL) return null;
