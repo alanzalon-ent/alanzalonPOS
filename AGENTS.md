@@ -28,3 +28,5 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+- POS state lives in src/lib/pos-store.ts (external store via useSyncExternalStore) so all screens share one live cart/orders; backend calls are isolated in src/lib/pos-api.ts (enabled by VITE_POS_API_URL) to swap demo data for a local REST/Socket.io server.
