@@ -30,3 +30,7 @@ use the editor.
 <!-- LOVABLE:END -->
 
 - POS state lives in src/lib/pos-store.ts (external store via useSyncExternalStore) so all screens share one live cart/orders; backend calls are isolated in src/lib/pos-api.ts (enabled by VITE_POS_API_URL) to swap demo data for a local REST/Socket.io server.
+- Hydrate browser-local POS state after mount and keep administration/report dialogs on the shared store so configuration changes reach every screen without SSR hydration mismatch.
+- The frontend PIN is a convenience gate, not a security boundary; staff entries are local cashier records, not authenticated accounts.
+- Record currency on each paid order and aggregate report amounts separately by currency so later configuration changes do not relabel historical sales.
+- Reports include paid checkouts regardless of kitchen status; gross sales are pre-discount, pre-tax subtotals and collected amounts are final totals.

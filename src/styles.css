@@ -133,3 +133,17 @@
 @utility tabular { font-variant-numeric: tabular-nums; }
 @keyframes pop { 0% { transform: scale(.96); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 @utility animate-pop { animation: pop .18s ease-out; }
+
+.pos-print-report { display: none; }
+@media print {
+  body * { visibility: hidden; }
+  .pos-print-report, .pos-print-report * { visibility: visible; }
+  .pos-print-report { display: block; position: fixed; inset: 0; overflow: visible; background: var(--card); color: var(--foreground); padding: 24px; font-size: 12px; }
+  .pos-print-report h1 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+  .pos-print-report h2 { font-size: 18px; margin: 12px 0; }
+  .pos-print-report p { margin: 8px 0; }
+  [role="dialog"] { position: static; transform: none; overflow: visible; height: auto; max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

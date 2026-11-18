@@ -9,12 +9,15 @@ export const Route = createFileRoute("/inventory")({
     { name: "description", content: "Track stock levels and restock products." },
     { property: "og:title", content: "Inventory — Alanzalon Enterprise POS" },
     { property: "og:description", content: "Track stock levels and restock products." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: Inventory,
 });
 
 function Inventory() {
   const products = usePos((s) => s.products);
+  usePos((s) => s.settings.currency);
   const low = products.filter((p) => p.stock < 10).length;
   const value = products.reduce((s, p) => s + p.stock * p.price, 0);
   return (

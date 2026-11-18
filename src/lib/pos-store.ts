@@ -4,12 +4,16 @@ import { patchOrderStatus, postOrder } from "./pos-api";
 export type Category = "Coffee" | "Non-Coffee" | "Pastries" | "Meals" | "Retail";
 export interface Product { id: string; name: string; category: Category; price: number; stock: number; barcode: string; emoji: string; }
 export interface CartLine { product: Product; qty: number; }
-export type PaymentMethod = "Cash" | "Card" | "E-Wallet";
+export type PaymentMethod = string;
+export type Currency = "PHP" | "USD";
+export interface StoreDetails { name: string; owner: string; logo: string; address: string; contact: string; instagram: string; }
+export interface PosSettings { itemDiscounts: boolean; currency: Currency; paymentOptions: string[]; }
+export interface PersonRecord { id: string; name: string; contact: string; }
 export interface Order {
   id: string; number: number; lines: { name: string; qty: number; price: number }[];
   subtotal: number; discount: number; tax: number; total: number;
   method: PaymentMethod; tendered: number; change: number;
-  status: "Pending" | "Preparing" | "Ready" | "Done"; createdAt: number;
+  status: "Pending" | "Preparing" | "Ready" | "Done"; createdAt: number; currency?: Currency;
 }
 export interface HeldOrder { id: string; lines: CartLine[]; at: number; }
 
@@ -34,10 +38,26 @@ export const seedProducts: Product[] = [
 interface State {
   products: Product[]; cart: CartLine[]; orders: Order[]; held: HeldOrder[];
   discountOn: boolean; taxOn: boolean; connected: boolean; nextNumber: number;
+  store: StoreDetails; settings: PosSettings; staff: PersonRecord[]; customers: PersonRecord[];
+  closedDays: string[]; storageError: boolean;
 }
-let state: State = { products: seedProducts, cart: [], orders: [], held: [], discountOn: false, taxOn: true, connected: true, nextNumber: 101 };
+const initialState: State = { products: seedProducts, cart: [], orders: [], held: [], discountOn: false, taxOn: true, connected: true, nextNumber: 101,
+  store: { name: "Your Store", owner: "", logo: "", address: "", contact: "", instagram: "" },
+  settings: { itemDiscounts: true, currency: "PHP", paymentOptions: ["Cash", "GCash", "Card"] },
+  staff: [], customers: [], closedDays: [], storageError: false,
+};
+let state: State = initialState;
+const STORAGE_KEY = "alanzalon-pos-v2";
+let hydrated = false;
 const listeners = new Set<() => void>();
-const set = (patch: Partial<State>) => { state = { ...state, ...patch }; listeners.forEach((l) => l()); };
+const set = (patch: Partial<State>) => {
+  state = { ...state, ...patch };
+  if (hydrated && typeof window !== "undefined") {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, connected: true, storageError: false })); }
+    catch { state = { ...state, storageError: true }; }
+  }
+  listeners.forEach((l) => l());
+};
 const subscribe = (l: () => void) => { listeners.add(l); return () => listeners.delete(l); };
 
 export function usePos<T>(sel: (s: State) => T): T {
@@ -52,9 +72,39 @@ export function computeTotals(cart: CartLine[], discountOn: boolean, taxOn: bool
   return { subtotal, discount, tax, total, items: cart.reduce((s, l) => s + l.qty, 0) };
 }
 
-export const peso = (n: number) => "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const peso = (n: number, currency: Currency = state.settings.currency) => (currency === "USD" ? "$" : "₱") + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const validAdminPin = (pin: string) => /^\d{4}$/.test(pin) && pin === "1234";
+export const dayKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+export function salesForDate(orders: Order[], date: Date) {
+  // All orders are paid at checkout; kitchen status is independent of payment completion.
+  const transactions = orders.filter((o) => dayKey(new Date(o.createdAt)) === dayKey(date));
+  return { transactions, count: transactions.length, gross: transactions.reduce((s, o) => s + o.subtotal, 0), net: transactions.reduce((s, o) => s + o.total, 0) };
+}
 
 export const pos = {
+  hydrate() {
+    if (hydrated || typeof window === "undefined") return;
+    hydrated = true;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<State>;
+        if (Array.isArray(saved.products) && Array.isArray(saved.orders) && saved.store && saved.settings && Array.isArray(saved.settings.paymentOptions)) {
+          set({ ...saved, connected: true, storageError: false });
+        }
+      }
+    } catch { set({ storageError: true }); }
+  },
+  updateStore: (store: StoreDetails) => set({ store }),
+  updateSettings: (settings: PosSettings) => set({ settings, discountOn: settings.itemDiscounts && state.discountOn }),
+  saveProduct(product: Product) {
+    const products = state.products.some((p) => p.id === product.id) ? state.products.map((p) => p.id === product.id ? product : p) : [...state.products, product];
+    set({ products, cart: state.cart.flatMap((l) => l.product.id !== product.id ? [l] : product.stock > 0 ? [{ product, qty: Math.min(l.qty, product.stock) }] : []) });
+  },
+  deleteProduct(id: string) { set({ products: state.products.filter((p) => p.id !== id), cart: state.cart.filter((l) => l.product.id !== id), held: state.held.map((h) => ({ ...h, lines: h.lines.filter((l) => l.product.id !== id) })).filter((h) => h.lines.length > 0) }); },
+  addPerson(kind: "staff" | "customers", name: string, contact: string) { set({ [kind]: [...state[kind], { id: crypto.randomUUID(), name, contact }] }); },
+  removePerson(kind: "staff" | "customers", id: string) { set({ [kind]: state[kind].filter((p) => p.id !== id) }); },
+  closeDay(date: Date) { const key = dayKey(date); if (!state.closedDays.includes(key)) set({ closedDays: [...state.closedDays, key] }); },
   setProducts: (products: Product[]) => set({ products }),
   setConnected: (connected: boolean) => set({ connected }),
   add(product: Product) {
@@ -68,7 +118,7 @@ export const pos = {
   },
   remove: (id: string) => set({ cart: state.cart.filter((l) => l.product.id !== id) }),
   clear: () => set({ cart: [], discountOn: false }),
-  toggleDiscount: () => set({ discountOn: !state.discountOn }),
+  toggleDiscount: () => { if (state.settings.itemDiscounts) set({ discountOn: !state.discountOn }); },
   toggleTax: () => set({ taxOn: !state.taxOn }),
   hold() {
     if (!state.cart.length) return;
@@ -76,7 +126,7 @@ export const pos = {
   },
   recall(id: string) {
     const h = state.held.find((x) => x.id === id); if (!h) return;
-    set({ cart: h.lines, held: state.held.filter((x) => x.id !== id) });
+    set({ cart: h.lines.flatMap((l) => { const product = state.products.find((p) => p.id === l.product.id); return product && product.stock > 0 ? [{ product, qty: Math.min(l.qty, product.stock) }] : []; }), held: state.held.filter((x) => x.id !== id) });
   },
   checkout(method: PaymentMethod, tendered: number): Order {
     const t = computeTotals(state.cart, state.discountOn, state.taxOn);
@@ -84,13 +134,13 @@ export const pos = {
       id: crypto.randomUUID(), number: state.nextNumber,
       lines: state.cart.map((l) => ({ name: l.product.name, qty: l.qty, price: l.product.price })),
       subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, method,
-      tendered: method === "Cash" ? tendered : t.total, change: method === "Cash" ? Math.max(0, tendered - t.total) : 0,
-      status: "Pending", createdAt: Date.now(),
+      tendered: method.toLowerCase() === "cash" ? tendered : t.total, change: method.toLowerCase() === "cash" ? Math.max(0, tendered - t.total) : 0,
+      status: "Pending", createdAt: Date.now(), currency: state.settings.currency,
     };
     const sold = new Map(state.cart.map((l) => [l.product.id, l.qty]));
     set({
       orders: [order, ...state.orders], nextNumber: state.nextNumber + 1, cart: [], discountOn: false,
-      products: state.products.map((p) => (sold.has(p.id) ? { ...p, stock: p.stock - sold.get(p.id)! } : p)),
+      products: state.products.map((p) => ({ ...p, stock: p.stock - (sold.get(p.id) ?? 0) })),
     });
     postOrder(order).catch(() => set({ connected: false }));
     return order;

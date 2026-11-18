@@ -13,6 +13,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Fast touch-friendly cashier for cafes, restaurants and retail shops." },
       { property: "og:title", content: "Cashier — Alanzalon Enterprise POS" },
       { property: "og:description", content: "Fast touch-friendly cashier for cafes, restaurants and retail shops." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Cashier,
@@ -26,6 +28,7 @@ function Cashier() {
   const held = usePos((s) => s.held);
   const discountOn = usePos((s) => s.discountOn);
   const taxOn = usePos((s) => s.taxOn);
+  const settings = usePos((s) => s.settings);
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
   const [q, setQ] = useState("");
   const [charging, setCharging] = useState(false);
@@ -111,7 +114,7 @@ function Cashier() {
           </div>
           <div className="space-y-2 border-t bg-secondary/50 p-4 text-sm tabular">
             <div className="flex gap-2">
-              <Toggle on={discountOn} onClick={pos.toggleDiscount}>Senior/PWD 20%</Toggle>
+              {settings.itemDiscounts && <Toggle on={discountOn} onClick={pos.toggleDiscount}>Senior/PWD 20%</Toggle>}
               <Toggle on={taxOn} onClick={pos.toggleTax}>VAT 12%</Toggle>
             </div>
             <Row label="Subtotal" value={peso(t.subtotal)} />

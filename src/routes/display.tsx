@@ -8,6 +8,8 @@ export const Route = createFileRoute("/display")({
     { name: "description", content: "Customer-facing screen showing scanned items and the amount due." },
     { property: "og:title", content: "Customer Display — Alanzalon Enterprise POS" },
     { property: "og:description", content: "Customer-facing screen showing scanned items and the amount due." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: CFD,
 });
@@ -16,6 +18,7 @@ function CFD() {
   const cart = usePos((s) => s.cart);
   const discountOn = usePos((s) => s.discountOn);
   const taxOn = usePos((s) => s.taxOn);
+  usePos((s) => s.settings.currency);
   const t = computeTotals(cart, discountOn, taxOn);
   return (
     <div className="flex min-h-screen flex-col bg-background">

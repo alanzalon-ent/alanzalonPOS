@@ -9,6 +9,8 @@ export const Route = createFileRoute("/orders")({
     { name: "description", content: "Live kitchen display of pending, preparing and ready orders." },
     { property: "og:title", content: "Kitchen Display — Alanzalon Enterprise POS" },
     { property: "og:description", content: "Live kitchen display of pending, preparing and ready orders." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
   ] }),
   component: KDS,
 });
