@@ -38,5 +38,19 @@ cp .env.example .env   # optional
 - `src/lib/pos-api.ts` — optional backend calls.
 - `src/components/pos/` — top bar, checkout, admin and reports panels.
 
+## Standalone build (no Lovable packages)
+`vite.standalone.config.ts` builds the app for a plain Node.js server, without `@lovable.dev/vite-tanstack-config`. The default `vite.config.ts` is kept for the Lovable preview.
+
+| Command | Purpose |
+| --- | --- |
+| `bun run dev:node` | Dev server using the standalone config |
+| `bun run build:node` | Production build to `.output/` (Nitro `node-server` preset) |
+| `bun run start` | Run the build: `node .output/server/index.mjs` (port 3000, override with `PORT`) |
+
+npm works too: `npm install && npm test && npm run build:node && npm start` (npm ignores `bun.lock`, so versions may differ).
+
+Verified in the Lovable sandbox (Bun): tests pass, `build:node` succeeds, and the built server returns HTTP 200 for `/`, `/orders`, `/display`, `/inventory`.
+**Not yet verified:** `dev:node`, npm install/build, a clean clone on your machine, checkout in a real browser on the standalone build, and any hosting/deploy target.
+
 ## Deployment
 The build uses `@lovable.dev/vite-tanstack-config` (public npm package), which targets Cloudflare Workers by default. Running and deploying outside Lovable has not been verified yet; that is the next portability step.
