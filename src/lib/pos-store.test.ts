@@ -21,11 +21,11 @@ describe("administration and reporting", () => {
   });
   it("uses configured payment options for paid orders", () => {
     pos.updateSettings({ itemDiscounts: true, currency: "PHP", paymentOptions: ["Cash", "GCash", "Card"] });
-    pos.clear(); pos.add(product);
+    pos.clear(); pos.setOrderType("Dine In"); pos.add(product);
     expect(pos.checkout("GCash", 0).method).toBe("GCash");
   });
   it("disabling item discounts prevents their application", () => {
-    pos.clear(); pos.add(product); pos.toggleDiscount();
+    pos.clear(); pos.setOrderType("Dine In"); pos.add(product); pos.toggleDiscount();
     pos.updateSettings({ itemDiscounts: false, currency: "PHP", paymentOptions: ["Cash", "GCash", "Card"] });
     pos.toggleDiscount();
     expect(pos.checkout("Card", 0).discount).toBe(0);

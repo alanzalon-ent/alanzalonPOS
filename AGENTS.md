@@ -34,3 +34,4 @@ use the editor.
 - The frontend PIN is a convenience gate, not a security boundary; staff entries are local cashier records, not authenticated accounts.
 - Record currency on each paid order and aggregate report amounts separately by currency so later configuration changes do not relabel historical sales.
 - Reports include paid checkouts regardless of kitchen status; gross sales are pre-discount, pre-tax subtotals and collected amounts are final totals.
+- Keep order metadata in the existing shared POS store and persisted cart/held/paid records; require an explicit type for new checkouts while displaying legacy missing types as unspecified so old sales remain accessible without inventing history.

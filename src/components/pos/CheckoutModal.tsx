@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Banknote, CreditCard, Smartphone, X, CheckCircle2 } from "lucide-react";
 import { peso, pos, usePos, type Order, type PaymentMethod } from "@/lib/pos-store";
 import { Button } from "@/components/ui/button";
+import { OrderMetadata } from "./OrderMetadata";
 
 export function CheckoutModal({ total, onClose }: { total: number; onClose: () => void }) {
   const settings = usePos((s) => s.settings);
   const store = usePos((s) => s.store);
+  const orderType = usePos((s) => s.orderType);
+  const pagerNumber = usePos((s) => s.pagerNumber);
   const methods = settings.paymentOptions.map((id) => ({ id, icon: id.toLowerCase() === "cash" ? Banknote : id.toLowerCase() === "card" ? CreditCard : Smartphone }));
   const [method, setMethod] = useState<PaymentMethod>(settings.paymentOptions[0] ?? "Cash");
   const [tendered, setTendered] = useState("");
@@ -13,7 +16,7 @@ export function CheckoutModal({ total, onClose }: { total: number; onClose: () =
   const cash = parseFloat(tendered) || 0;
   const change = cash - total;
   const cashPayment = method.toLowerCase() === "cash";
-  const canPay = settings.paymentOptions.includes(method) && (!cashPayment || cash >= total);
+  const canPay = Boolean(orderType) && settings.paymentOptions.includes(method) && (!cashPayment || cash >= total);
   const quick = [Math.ceil(total), Math.ceil(total / 100) * 100, Math.ceil(total / 500) * 500, 1000].filter((v, i, a) => a.indexOf(v) === i && v >= total);
 
   return (
@@ -26,8 +29,9 @@ export function CheckoutModal({ total, onClose }: { total: number; onClose: () =
             <p className="mt-1 font-semibold">{store.name}</p>
             <p className="text-sm text-muted-foreground">Order #{receipt.number} sent to kitchen</p>
             <div className="mt-5 space-y-1 rounded-xl border border-dashed p-4 text-left text-sm tabular">
-              {receipt.lines.map((l) => (
-                <div key={l.name} className="flex justify-between"><span>{l.qty}× {l.name}</span><span>{peso(l.qty * l.price)}</span></div>
+              <OrderMetadata order={receipt} />
+              {receipt.lines.map((l, i) => (
+                <div key={i}><div className="flex justify-between gap-3"><span>{l.qty}× {l.name}</span><span>{peso(l.qty * l.price)}</span></div>{l.note && <p dir="auto" className="whitespace-pre-wrap break-words text-start text-xs font-medium text-muted-foreground">Special Request: {l.note}</p>}</div>
               ))}
               <div className="my-2 border-t border-dashed" />
               {receipt.discount > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount</span><span>−{peso(receipt.discount)}</span></div>}
@@ -45,6 +49,7 @@ export function CheckoutModal({ total, onClose }: { total: number; onClose: () =
               <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close"><X /></Button>
             </div>
             <div className="mt-2 font-display text-4xl font-bold tabular">{peso(total)}</div>
+            <div className="mt-3"><OrderMetadata order={{ orderType, pagerNumber }} /></div>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {methods.map(({ id, icon: Icon }) => (
                 <Button variant="outline" key={id} onClick={() => setMethod(id)}

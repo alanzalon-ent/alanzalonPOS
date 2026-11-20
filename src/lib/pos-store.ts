@@ -3,19 +3,24 @@ import { patchOrderStatus, postOrder } from "./pos-api";
 
 export type Category = "Coffee" | "Non-Coffee" | "Pastries" | "Meals" | "Retail";
 export interface Product { id: string; name: string; category: Category; price: number; stock: number; barcode: string; emoji: string; }
-export interface CartLine { product: Product; qty: number; }
+export interface CartLine { product: Product; qty: number; note?: string; }
+export const ORDER_TYPES = ["Dine In", "Take Out", "Delivery"] as const;
+export type OrderType = (typeof ORDER_TYPES)[number];
+export const isOrderType = (value: unknown): value is OrderType => ORDER_TYPES.some((type) => type === value);
+export const orderTypeLabel = (value: unknown) => isOrderType(value) ? value : "Not specified";
 export type PaymentMethod = string;
 export type Currency = "PHP" | "USD";
 export interface StoreDetails { name: string; owner: string; logo: string; address: string; contact: string; instagram: string; }
 export interface PosSettings { itemDiscounts: boolean; currency: Currency; paymentOptions: string[]; }
 export interface PersonRecord { id: string; name: string; contact: string; }
 export interface Order {
-  id: string; number: number; lines: { name: string; qty: number; price: number }[];
+  id: string; number: number; lines: { name: string; qty: number; price: number; note?: string }[];
+  orderType?: OrderType | null; pagerNumber?: string;
   subtotal: number; discount: number; tax: number; total: number;
   method: PaymentMethod; tendered: number; change: number;
   status: "Pending" | "Preparing" | "Ready" | "Done"; createdAt: number; currency?: Currency;
 }
-export interface HeldOrder { id: string; lines: CartLine[]; at: number; }
+export interface HeldOrder { id: string; lines: CartLine[]; at: number; orderType?: OrderType | null; pagerNumber?: string; }
 
 export const TAX_RATE = 0.12; // PH VAT
 export const DISCOUNT_RATE = 0.2; // Senior/PWD
@@ -40,11 +45,12 @@ interface State {
   discountOn: boolean; taxOn: boolean; connected: boolean; nextNumber: number;
   store: StoreDetails; settings: PosSettings; staff: PersonRecord[]; customers: PersonRecord[];
   closedDays: string[]; storageError: boolean;
+  orderType: OrderType | null; pagerNumber: string;
 }
 const initialState: State = { products: seedProducts, cart: [], orders: [], held: [], discountOn: false, taxOn: true, connected: true, nextNumber: 101,
   store: { name: "Your Store", owner: "", logo: "", address: "", contact: "", instagram: "" },
   settings: { itemDiscounts: true, currency: "PHP", paymentOptions: ["Cash", "GCash", "Card"] },
-  staff: [], customers: [], closedDays: [], storageError: false,
+  staff: [], customers: [], closedDays: [], storageError: false, orderType: null, pagerNumber: "",
 };
 let state: State = initialState;
 const STORAGE_KEY = "alanzalon-pos-v2";
@@ -90,7 +96,7 @@ export const pos = {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<State>;
         if (Array.isArray(saved.products) && Array.isArray(saved.orders) && saved.store && saved.settings && Array.isArray(saved.settings.paymentOptions)) {
-          set({ ...saved, connected: true, storageError: false });
+          set({ ...saved, orderType: isOrderType(saved.orderType) ? saved.orderType : null, pagerNumber: typeof saved.pagerNumber === "string" ? saved.pagerNumber : "", connected: true, storageError: false });
         }
       }
     } catch { set({ storageError: true }); }
@@ -99,7 +105,7 @@ export const pos = {
   updateSettings: (settings: PosSettings) => set({ settings, discountOn: settings.itemDiscounts && state.discountOn }),
   saveProduct(product: Product) {
     const products = state.products.some((p) => p.id === product.id) ? state.products.map((p) => p.id === product.id ? product : p) : [...state.products, product];
-    set({ products, cart: state.cart.flatMap((l) => l.product.id !== product.id ? [l] : product.stock > 0 ? [{ product, qty: Math.min(l.qty, product.stock) }] : []) });
+    set({ products, cart: state.cart.flatMap((l) => l.product.id !== product.id ? [l] : product.stock > 0 ? [{ ...l, product, qty: Math.min(l.qty, product.stock) }] : []) });
   },
   deleteProduct(id: string) { set({ products: state.products.filter((p) => p.id !== id), cart: state.cart.filter((l) => l.product.id !== id), held: state.held.map((h) => ({ ...h, lines: h.lines.filter((l) => l.product.id !== id) })).filter((h) => h.lines.length > 0) }); },
   addPerson(kind: "staff" | "customers", name: string, contact: string) { set({ [kind]: [...state[kind], { id: crypto.randomUUID(), name, contact }] }); },
@@ -117,29 +123,34 @@ export const pos = {
     set({ cart: state.cart.flatMap((l) => (l.product.id !== id ? [l] : qty <= 0 ? [] : [{ ...l, qty: Math.min(qty, l.product.stock) }])) });
   },
   remove: (id: string) => set({ cart: state.cart.filter((l) => l.product.id !== id) }),
-  clear: () => set({ cart: [], discountOn: false }),
+  setOrderType: (orderType: OrderType) => { if (isOrderType(orderType)) set({ orderType }); },
+  setPagerNumber: (pagerNumber: string) => set({ pagerNumber }),
+  setItemNote: (id: string, note: string) => set({ cart: state.cart.map((l) => l.product.id === id ? { ...l, note } : l) }),
+  clear: () => set({ cart: [], discountOn: false, orderType: null, pagerNumber: "" }),
   toggleDiscount: () => { if (state.settings.itemDiscounts) set({ discountOn: !state.discountOn }); },
   toggleTax: () => set({ taxOn: !state.taxOn }),
   hold() {
     if (!state.cart.length) return;
-    set({ held: [{ id: crypto.randomUUID(), lines: state.cart, at: Date.now() }, ...state.held], cart: [] });
+    set({ held: [{ id: crypto.randomUUID(), lines: state.cart, at: Date.now(), orderType: state.orderType, pagerNumber: state.pagerNumber }, ...state.held], cart: [], orderType: null, pagerNumber: "" });
   },
   recall(id: string) {
     const h = state.held.find((x) => x.id === id); if (!h) return;
-    set({ cart: h.lines.flatMap((l) => { const product = state.products.find((p) => p.id === l.product.id); return product && product.stock > 0 ? [{ product, qty: Math.min(l.qty, product.stock) }] : []; }), held: state.held.filter((x) => x.id !== id) });
+    set({ cart: h.lines.flatMap((l) => { const product = state.products.find((p) => p.id === l.product.id); return product && product.stock > 0 ? [{ ...l, product, qty: Math.min(l.qty, product.stock) }] : []; }), orderType: isOrderType(h.orderType) ? h.orderType : null, pagerNumber: h.pagerNumber ?? "", held: state.held.filter((x) => x.id !== id) });
   },
   checkout(method: PaymentMethod, tendered: number): Order {
+    if (!isOrderType(state.orderType)) throw new Error("Select an order type before checkout.");
     const t = computeTotals(state.cart, state.discountOn, state.taxOn);
     const order: Order = {
       id: crypto.randomUUID(), number: state.nextNumber,
-      lines: state.cart.map((l) => ({ name: l.product.name, qty: l.qty, price: l.product.price })),
+      lines: state.cart.map((l) => ({ name: l.product.name, qty: l.qty, price: l.product.price, ...(l.note?.trim() ? { note: l.note.trim() } : {}) })),
+      orderType: state.orderType, ...(state.pagerNumber.trim() ? { pagerNumber: state.pagerNumber.trim() } : {}),
       subtotal: t.subtotal, discount: t.discount, tax: t.tax, total: t.total, method,
       tendered: method.toLowerCase() === "cash" ? tendered : t.total, change: method.toLowerCase() === "cash" ? Math.max(0, tendered - t.total) : 0,
       status: "Pending", createdAt: Date.now(), currency: state.settings.currency,
     };
     const sold = new Map(state.cart.map((l) => [l.product.id, l.qty]));
     set({
-      orders: [order, ...state.orders], nextNumber: state.nextNumber + 1, cart: [], discountOn: false,
+      orders: [order, ...state.orders], nextNumber: state.nextNumber + 1, cart: [], discountOn: false, orderType: null, pagerNumber: "",
       products: state.products.map((p) => ({ ...p, stock: p.stock - (sold.get(p.id) ?? 0) })),
     });
     postOrder(order).catch(() => set({ connected: false }));

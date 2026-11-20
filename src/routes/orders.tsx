@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TopNav } from "@/components/pos/TopNav";
 import { pos, usePos, type Order } from "@/lib/pos-store";
+import { OrderMetadata } from "@/components/pos/OrderMetadata";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({ meta: [
@@ -38,14 +40,15 @@ function KDS() {
               </h2>
               <div className="space-y-3">
                 {list.map((o) => (
-                  <button key={o.id} onClick={() => pos.advance(o.id)} className="block w-full animate-pop rounded-xl bg-card p-4 text-left shadow-card transition active:scale-[.98]">
+                  <Button variant="ghost" key={o.id} onClick={() => pos.advance(o.id)} className="block h-auto w-full animate-pop whitespace-normal rounded-xl bg-card p-4 text-start shadow-card transition active:scale-[.98]">
                     <div className="flex items-baseline justify-between">
                       <span className="font-display text-xl font-bold">#{o.number}</span>
                       <span className="text-xs text-muted-foreground">{Math.max(0, Math.floor((now - o.createdAt) / 60000))} min</span>
                     </div>
-                    <ul className="mt-2 space-y-0.5 text-sm">{o.lines.map((l) => <li key={l.name}><b>{l.qty}×</b> {l.name}</li>)}</ul>
+                    <div className="mt-2 border-b pb-2"><OrderMetadata order={o} /></div>
+                    <ul className="mt-2 space-y-2 text-sm">{o.lines.map((l, i) => <li key={i}><b>{l.qty}×</b> {l.name}{l.note && <p dir="auto" className="mt-1 whitespace-pre-wrap break-words border-s-2 border-primary ps-2 text-start font-semibold text-accent-foreground">Special Request: {l.note}</p>}</li>)}</ul>
                     <div className={`mt-3 rounded-lg py-2 text-center text-sm font-bold ${c.tone} text-foreground`}>{c.action}</div>
-                  </button>
+                  </Button>
                 ))}
                 {!list.length && <p className="py-8 text-center text-sm text-shell-muted">No orders</p>}
               </div>

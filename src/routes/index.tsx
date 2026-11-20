@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Minus, Plus, Trash2, PauseCircle, XCircle, ShoppingBag } from "lucide-react";
 import { TopNav } from "@/components/pos/TopNav";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
-import { computeTotals, peso, pos, usePos, type Category } from "@/lib/pos-store";
+import { computeTotals, peso, pos, usePos, ORDER_TYPES, type Category } from "@/lib/pos-store";
+import { Button } from "@/components/ui/button";
 import { fetchProducts } from "@/lib/pos-api";
 
 export const Route = createFileRoute("/")({
@@ -29,6 +30,8 @@ function Cashier() {
   const discountOn = usePos((s) => s.discountOn);
   const taxOn = usePos((s) => s.taxOn);
   const settings = usePos((s) => s.settings);
+  const orderType = usePos((s) => s.orderType);
+  const pagerNumber = usePos((s) => s.pagerNumber);
   const [cat, setCat] = useState<(typeof cats)[number]>("All");
   const [q, setQ] = useState("");
   const [charging, setCharging] = useState(false);
@@ -82,10 +85,21 @@ function Cashier() {
           </div>
         </section>
 
-        <aside className="sticky bottom-0 flex flex-col border-t bg-card lg:static lg:basis-[30%] lg:border-l lg:border-t-0">
+        <aside className="flex flex-col border-t bg-card lg:basis-[30%] lg:border-l lg:border-t-0">
           <div className="flex items-center justify-between border-b px-4 py-3">
             <h2 className="font-display font-semibold">Current order</h2>
             <span className="text-sm text-muted-foreground">{t.items} items</span>
+          </div>
+          <div className="space-y-3 border-b px-4 py-3">
+            <fieldset>
+              <legend className="mb-2 text-sm font-semibold">Order Type <span className="text-destructive">*</span></legend>
+              <div className="grid grid-cols-3 gap-2">
+                {ORDER_TYPES.map((type) => <Button key={type} variant={orderType === type ? "default" : "outline"} aria-pressed={orderType === type} onClick={() => pos.setOrderType(type)} className="h-auto min-h-10 whitespace-normal px-2">{type}</Button>)}
+              </div>
+            </fieldset>
+            <div><label htmlFor="pager-number" className="text-sm font-medium">Pager No. <span className="text-muted-foreground">(optional)</span></label>
+              <input id="pager-number" dir="auto" inputMode="numeric" value={pagerNumber} onChange={(e) => pos.setPagerNumber(e.target.value)} className="mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
+            </div>
           </div>
           {held.length > 0 && (
             <div className="flex gap-2 overflow-x-auto border-b px-4 py-2">
@@ -97,11 +111,13 @@ function Cashier() {
           <div className="max-h-56 flex-1 overflow-y-auto px-4 lg:max-h-none">
             {!cart.length ? (
               <div className="flex flex-col items-center py-10 text-muted-foreground"><ShoppingBag className="size-10 opacity-40" /><p className="mt-2 text-sm">Tap a product to add</p></div>
-            ) : cart.map(({ product: p, qty }) => (
+            ) : cart.map(({ product: p, qty, note }) => (
               <div key={p.id} className="flex items-center gap-3 border-b py-3 last:border-0">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{p.name}</div>
-                  <div className="text-xs text-muted-foreground tabular">{peso(p.price)} · <span className="font-semibold text-foreground">{peso(p.price * qty)}</span></div>
+                   <div className="text-xs text-muted-foreground tabular">{peso(p.price)} · <span className="font-semibold text-foreground">{peso(p.price * qty)}</span></div>
+                   <label htmlFor={`item-note-${p.id}`} className="mt-2 block text-xs text-muted-foreground">Special Request / Item Note</label>
+                   <textarea id={`item-note-${p.id}`} aria-label={`Special Request for ${p.name}`} dir="auto" rows={2} value={note ?? ""} onChange={(e) => pos.setItemNote(p.id, e.target.value)} className="mt-1 w-full resize-y rounded-lg border bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring" />
                 </div>
                 <div className="flex items-center rounded-lg bg-secondary">
                   <button aria-label="Decrease" onClick={() => pos.setQty(p.id, qty - 1)} className="p-2"><Minus className="size-4" /></button>
@@ -128,10 +144,11 @@ function Cashier() {
               <button disabled={!cart.length} onClick={pos.hold} className="flex items-center justify-center gap-1.5 rounded-xl border bg-card py-2.5 font-semibold disabled:opacity-40"><PauseCircle className="size-4" />Hold</button>
               <button disabled={!cart.length} onClick={pos.clear} className="flex items-center justify-center gap-1.5 rounded-xl border bg-card py-2.5 font-semibold text-destructive disabled:opacity-40"><XCircle className="size-4" />Cancel</button>
             </div>
-            <button disabled={!cart.length} onClick={() => setCharging(true)}
-              className="w-full rounded-xl bg-success py-4 text-lg font-bold text-success-foreground shadow-charge transition enabled:hover:brightness-105 enabled:active:scale-[.99] disabled:opacity-40">
+             {cart.length > 0 && !orderType && <p className="text-xs text-destructive">Select an order type to continue.</p>}
+             <Button disabled={!cart.length || !orderType} onClick={() => setCharging(true)}
+               className="h-auto w-full rounded-xl bg-success py-4 text-lg font-bold text-success-foreground shadow-charge transition enabled:hover:brightness-105 enabled:active:scale-[.99] disabled:opacity-40">
               Charge {cart.length > 0 && peso(t.total)}
-            </button>
+             </Button>
           </div>
         </aside>
       </main>
