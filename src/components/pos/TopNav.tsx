@@ -12,7 +12,7 @@ const tabs = [
   { to: "/orders", label: "activeOrders", icon: ChefHat },
   { to: "/display", label: "customerDisplay", icon: MonitorSmartphone },
   { to: "/inventory", label: "inventory", icon: Boxes },
-] as const satisfies readonly { label: TKey }[];
+] as const satisfies readonly { to: string; label: TKey; icon: unknown }[];
 
 export function TopNav() {
   const [panel, setPanel] = useState<"admin" | "reports" | null>(null);
