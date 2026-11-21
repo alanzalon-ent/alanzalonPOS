@@ -10,6 +10,8 @@ export const isOrderType = (value: unknown): value is OrderType => ORDER_TYPES.s
 export const orderTypeLabel = (value: unknown) => isOrderType(value) ? value : "Not specified";
 export type PaymentMethod = string;
 export type Currency = "PHP" | "USD";
+export type Language = "en" | "ar";
+export const isLanguage = (v: unknown): v is Language => v === "en" || v === "ar";
 export interface StoreDetails { name: string; owner: string; logo: string; address: string; contact: string; instagram: string; }
 export interface PosSettings { itemDiscounts: boolean; currency: Currency; paymentOptions: string[]; }
 export interface PersonRecord { id: string; name: string; contact: string; }
@@ -45,12 +47,12 @@ interface State {
   discountOn: boolean; taxOn: boolean; connected: boolean; nextNumber: number;
   store: StoreDetails; settings: PosSettings; staff: PersonRecord[]; customers: PersonRecord[];
   closedDays: string[]; storageError: boolean;
-  orderType: OrderType | null; pagerNumber: string;
+  orderType: OrderType | null; pagerNumber: string; language: Language;
 }
 const initialState: State = { products: seedProducts, cart: [], orders: [], held: [], discountOn: false, taxOn: true, connected: true, nextNumber: 101,
   store: { name: "Your Store", owner: "", logo: "", address: "", contact: "", instagram: "" },
   settings: { itemDiscounts: true, currency: "PHP", paymentOptions: ["Cash", "GCash", "Card"] },
-  staff: [], customers: [], closedDays: [], storageError: false, orderType: null, pagerNumber: "",
+  staff: [], customers: [], closedDays: [], storageError: false, orderType: null, pagerNumber: "", language: "en",
 };
 let state: State = initialState;
 const STORAGE_KEY = "alanzalon-pos-v2";
@@ -96,11 +98,12 @@ export const pos = {
       if (raw) {
         const saved = JSON.parse(raw) as Partial<State>;
         if (Array.isArray(saved.products) && Array.isArray(saved.orders) && saved.store && saved.settings && Array.isArray(saved.settings.paymentOptions)) {
-          set({ ...saved, orderType: isOrderType(saved.orderType) ? saved.orderType : null, pagerNumber: typeof saved.pagerNumber === "string" ? saved.pagerNumber : "", connected: true, storageError: false });
+          set({ ...saved, orderType: isOrderType(saved.orderType) ? saved.orderType : null, pagerNumber: typeof saved.pagerNumber === "string" ? saved.pagerNumber : "", language: isLanguage(saved.language) ? saved.language : "en", connected: true, storageError: false });
         }
       }
     } catch { set({ storageError: true }); }
   },
+  setLanguage: (language: Language) => { if (isLanguage(language)) set({ language }); },
   updateStore: (store: StoreDetails) => set({ store }),
   updateSettings: (settings: PosSettings) => set({ settings, discountOn: settings.itemDiscounts && state.discountOn }),
   saveProduct(product: Product) {
