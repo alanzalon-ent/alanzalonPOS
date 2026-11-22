@@ -70,8 +70,8 @@
   --color-shell-2: var(--shell-2);
   --color-shell-foreground: var(--shell-foreground);
   --color-shell-muted: var(--shell-muted);
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--pos-font-sans);
+  --font-display: var(--pos-font-display);
   --shadow-card: var(--shadow-card);
   --shadow-charge: var(--shadow-charge);
   --color-sidebar: var(--sidebar);
@@ -85,6 +85,8 @@
 }
 
 :root {
+  --pos-font-sans: "Manrope", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --pos-font-display: "Sora", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.875rem;
   --background: oklch(0.975 0.008 85);
   --foreground: oklch(0.2 0.02 60);
@@ -117,6 +119,11 @@
   --sidebar: var(--shell); --sidebar-foreground: var(--shell-foreground); --sidebar-primary: var(--primary); --sidebar-primary-foreground: var(--primary-foreground); --sidebar-accent: var(--shell-2); --sidebar-accent-foreground: var(--shell-foreground); --sidebar-border: oklch(1 0 0 / 10%); --sidebar-ring: var(--ring);
   --shadow-card: 0 1px 2px oklch(0.2 0.02 60 / 6%), 0 8px 24px -12px oklch(0.2 0.02 60 / 18%);
   --shadow-charge: 0 12px 30px -10px color-mix(in oklab, var(--success) 60%, transparent);
+}
+
+:root[lang="ar"] {
+  --pos-font-sans: "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --pos-font-display: "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {

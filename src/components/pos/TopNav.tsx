@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutGrid, ChefHat, MonitorSmartphone, Boxes, LockKeyhole, Settings, Languages } from "lucide-react";
+import { LayoutGrid, ChefHat, MonitorSmartphone, Boxes, LockKeyhole, Settings, Languages, type LucideIcon } from "lucide-react";
 import { useT, type TKey } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ const tabs = [
   { to: "/orders", label: "activeOrders", icon: ChefHat },
   { to: "/display", label: "customerDisplay", icon: MonitorSmartphone },
   { to: "/inventory", label: "inventory", icon: Boxes },
-] as const satisfies readonly { to: string; label: TKey; icon: unknown }[];
+] as const satisfies readonly { to: string; label: TKey; icon: LucideIcon }[];
 
 export function TopNav() {
   const [panel, setPanel] = useState<"admin" | "reports" | null>(null);
@@ -28,11 +28,11 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-30 bg-shell text-shell-foreground">
       <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        <div className="flex min-w-0 basis-full items-center gap-2.5 sm:flex-1 sm:basis-auto">
           {store.logo && !logoFailed ? <img src={store.logo} alt={`${store.name} logo`} className="size-10 shrink-0 rounded-lg bg-card object-contain" onError={() => setLogoFailed(true)} /> : <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary font-display text-sm font-bold text-primary-foreground">{store.name.charAt(0).toUpperCase()}</div>}
           <div className="min-w-0 leading-tight">
             <div className="truncate font-display text-sm font-semibold sm:text-base">{store.name}</div>
-            <div className="mt-1 text-[10px] text-shell-muted">{t("by")} <span className="font-semibold text-shell-foreground">Alanzalon Enterprise</span></div>
+            <div className="mt-1 text-[10px] text-shell-muted">{t("by")} <bdi className="font-semibold text-shell-foreground">Alanzalon Enterprise</bdi></div>
             <Button variant="ghost" size="sm" onClick={() => pos.setConnected(!connected)} className="mt-0.5 h-auto justify-start gap-1.5 p-0 text-xs text-shell-muted hover:bg-transparent hover:text-shell-foreground" title={t("toggleConnection")}>
               <span className={`size-2 rounded-full ${connected ? "bg-success animate-pulse" : "bg-destructive"}`} />
               {connected ? t("connected") : t("offline")}

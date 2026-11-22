@@ -17,7 +17,7 @@ export function ReportsPanel({ onClose }: { onClose: () => void }) {
   const store = usePos((s) => s.store);
   const currency = usePos((s) => s.settings.currency);
   const closedDays = usePos((s) => s.closedDays);
-  const { t } = useT();
+  const { t, lang, dir } = useT();
   const format = useFormat();
   const [tab, setTab] = useState("Latest Transactions");
   const [date, setDate] = useState<Date>(new Date());
@@ -40,11 +40,11 @@ export function ReportsPanel({ onClose }: { onClose: () => void }) {
     }));
   }
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-    <DialogContent className="flex h-[min(780px,92dvh)] w-[calc(100%-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden rounded-lg p-0">
+    <DialogContent dir={dir} className="flex h-[min(780px,92dvh)] w-[calc(100%-1.5rem)] max-w-4xl flex-col gap-0 overflow-hidden rounded-lg p-0">
       <header className="border-b px-5 py-4 pe-12"><DialogTitle className="font-display">{t("reportsTitle")}</DialogTitle><DialogDescription className="mt-1 truncate">{store.name}</DialogDescription></header>
       <nav aria-label={t("reportSections")} className="flex shrink-0 gap-1 overflow-x-auto border-b bg-secondary/50 p-2">{[["Latest Transactions", ReceiptText], ["End of Day", Sun], ["Calendar History", CalendarDays]].map(([name, Icon]) => { const TabIcon = Icon as typeof ReceiptText; return <Button key={String(name)} variant={tab === name ? "default" : "ghost"} className="shrink-0" onClick={() => setTab(String(name))}><TabIcon />{t(({ "Latest Transactions": "latestTransactions", "End of Day": "endOfDay", "Calendar History": "calendarHistory" } as Record<string, TKey>)[String(name)] ?? "reports")}</Button>; })}</nav>
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        {tab === "Calendar History" && <div className="mb-5"><Popover open={calendarOpen} onOpenChange={setCalendarOpen}><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start sm:w-auto"><CalendarIcon />{format(date, "PPP")}</Button></PopoverTrigger><PopoverContent className="pointer-events-auto w-auto p-0" align="start"><Calendar mode="single" selected={date} defaultMonth={date} onSelect={(value) => { if (value) { setDate(value); setCalendarOpen(false); } }} className="pointer-events-auto p-3" /></PopoverContent></Popover></div>}
+        {tab === "Calendar History" && <div className="mb-5"><Popover open={calendarOpen} onOpenChange={setCalendarOpen}><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start sm:w-auto"><CalendarIcon />{format(date, "PPP")}</Button></PopoverTrigger><PopoverContent className="pointer-events-auto w-auto p-0" align="start"><Calendar locale={lang === "ar" ? ar : undefined} dir={dir} mode="single" selected={date} defaultMonth={date} onSelect={(value) => { if (value) { setDate(value); setCalendarOpen(false); } }} className="pointer-events-auto p-3" /></PopoverContent></Popover></div>}
         {tab !== "Latest Transactions" && <>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-display text-lg font-semibold">{format(reportDate, "MMMM d, yyyy")}</h2>{closedDays.includes(dayKey(reportDate)) && <p className="mt-1 text-xs font-medium text-success">{t("eodIssued")}</p>}</div><Button onClick={printReport}><Printer />{tab === "End of Day" ? t("printEod") : t("printReport")}</Button></div>
           <div className="mb-6 rounded-lg border bg-card p-4"><p className="mb-4 text-sm text-muted-foreground">{t("totalTransactions")} <b className="float-end text-lg text-foreground tabular">{daily.count}</b></p><div className="space-y-4">{currencies.filter((c) => daily.transactions.some((o) => (o.currency ?? "PHP") === c) || c === currency).map((c) => { const group = daily.transactions.filter((o) => (o.currency ?? "PHP") === c); return <div key={c} className="grid grid-cols-2 gap-4 border-t pt-4"><div><p className="text-xs text-muted-foreground">{t("grossSales")} · {c}</p><p className="mt-1 break-words font-display text-xl font-bold tabular">{peso(group.reduce((s, o) => s + o.subtotal, 0), c)}</p></div><div><p className="text-xs text-muted-foreground">{t("collected")} · {c}</p><p className="mt-1 break-words font-display text-xl font-bold text-success tabular">{peso(group.reduce((s, o) => s + o.total, 0), c)}</p></div></div>; })}</div></div>
